@@ -1,9 +1,13 @@
 import os, json, time, pathlib
+from copy import deepcopy
 import numpy as np
+import pandas as pd
 import faiss
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from rapidfuzz import fuzz
 import streamlit as st
+from underwriter.scenarios import SCENARIOS
+from underwriter.tools import underwrite_case
 
 # Optional local generator (Qwen3) dependencies are loaded lazily
 try:
@@ -148,12 +152,31 @@ with st.expander("How it works", expanded=False):
         "3. **Answer** with citations, then compute a blended confidence score."
     )
 
-q = st.text_input("Ask a question", placeholder="e.g., What are eligibility rules for 504 loans?")
 with st.sidebar:
     st.header("Retrieval Settings")
     k = st.slider("Top-K retrieve", 10, 100, 40, step=10)
     topn = st.slider("Top-N rerank", 3, 10, 6)
     st.caption("Tune to explore recall vs. precision.")
+    st.divider()
+    st.markdown("**Scenario bundles**")
+    scenario_name = st.selectbox("Choose a scenario", list(SCENARIOS.keys()), index=0)
+    scenario_data = deepcopy(SCENARIOS.get(scenario_name, {}))
+    if scenario_data.get("description"):
+        st.caption(scenario_data["description"])
+
+    default_question = scenario_data.get("question", "What are eligibility rules for SBA 504 loans?")
+
+q = st.text_input(
+    "Ask a question",
+    value=default_question,
+    placeholder="e.g., What are eligibility rules for 504 loans?",
+)
+
+show_explain = st.toggle(
+    "Show underwriting explanation",
+    value=bool(scenario_data.get("features")),
+    help="Overlay the underwriting engine to surface PD contributions, failed rules, and audit hashes.",
+)
 
 if q:
     t0 = time.time()
@@ -176,3 +199,54 @@ if q:
             st.write(h["text"])
             # Optional page preview if your meta stored it:
             # st.caption(f"{h.get('source_path','')}  p.{h.get('page', '?')}")
+
+    if scenario_data.get("features") and show_explain:
+        st.subheader("Underwriting decision insights")
+        try:
+            uw_result = underwrite_case(
+                program=scenario_data.get("program", "7a"),
+                features=scenario_data["features"],
+                loan_terms=scenario_data.get("loan_terms"),
+                citation_query=scenario_data.get("citation_query"),
+                finalize=False,
+            )
+            metrics = uw_result.get("metrics", {})
+            policy = uw_result.get("policy", {})
+            risk = uw_result.get("risk", {})
+            col_a, col_b, col_c, col_d = st.columns(4)
+            col_a.metric("Decision", uw_result.get("decision", "n/a").title())
+            col_b.metric("Risk band", risk.get("risk_band", "-"))
+            col_c.metric("PD", f"{risk.get('pd', 0.0)*100:.2f}%")
+            col_d.metric("DSCR", f"{metrics.get('dscr', 0.0):.2f}")
+
+            conditions = policy.get("conditions", [])
+            if conditions:
+                st.info("\n".join(f"• {c}" for c in conditions))
+            else:
+                st.success("No additional conditions required.")
+
+            failed_rules = policy.get("failed_rules", [])
+            if failed_rules:
+                st.error("Failed rules:" + "\n" + "\n".join(f"- {r.get('id')}: {r.get('reason')}" for r in failed_rules))
+
+            contrib = risk.get("contributions", {})
+            if contrib:
+                contrib_df = pd.DataFrame(
+                    [(k, v) for k, v in contrib.items()],
+                    columns=["Feature", "Contribution"],
+                ).sort_values("Contribution", ascending=False)
+                st.markdown("**Feature contributions (log-odds)**")
+                st.dataframe(contrib_df, use_container_width=True)
+
+            citations = uw_result.get("citations", [])
+            if citations:
+                with st.expander("Citations"):
+                    for idx, cite in enumerate(citations, start=1):
+                        st.markdown(
+                            f"**[{idx}] {cite.get('title', cite.get('doc'))}** — p.{cite.get('page', '?')}\n\n{cite.get('text', '')}"
+                        )
+
+            with st.expander("Audit record"):
+                st.code(json.dumps(uw_result.get("audit", {}), indent=2))
+        except Exception as exc:  # pragma: no cover - display errors in UI
+            st.warning(f"Unable to generate underwriting insights: {exc}")
