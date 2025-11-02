@@ -1,0 +1,40 @@
+programs:
+  "7a":
+    rules:
+      - id: "SOP-50-10-7a-eligibility"
+        expr: "facts.get('citizenship') in ['US', 'PR'] and not facts.get('delinquencies', False)"
+        reason: "Borrower must be a qualifying citizen without federal delinquencies."
+      - id: "SOP-50-10-7a-dscr"
+        expr: "metrics.get('dscr', 0) >= 1.15"
+        reason: "Minimum DSCR of 1.15 required for 7(a) standard underwriting."
+    decision_table:
+      - when: "metrics.get('dscr', 0) >= 1.2 and metrics.get('pd', 1) <= 0.06 and metrics.get('collateral_coverage', 0) >= 0.8"
+        decision: "approve"
+        conditions: []
+      - when: "metrics.get('dscr', 0) >= 1.05 and metrics.get('pd', 1) <= 0.1"
+        decision: "conditional"
+        conditions:
+          - "Fund working-capital reserve equal to two months of debt service."
+      - decision: "decline"
+        conditions:
+          - "Document compensating factors for DSCR shortfall or elevated PD."
+
+  "504":
+    rules:
+      - id: "SOP-50-10-504-use-of-proceeds"
+        expr: "facts.get('use_of_proceeds') in ['fixed_assets', 'refinance']"
+        reason: "Use of proceeds must align with 504 eligible categories."
+      - id: "SOP-50-10-504-size"
+        expr: "facts.get('size_standard', '') == 'meets'"
+        reason: "Applicant must meet SBA size standards."
+    decision_table:
+      - when: "metrics.get('dscr', 0) >= 1.2 and metrics.get('pd', 1) <= 0.06"
+        decision: "approve"
+        conditions: []
+      - when: "metrics.get('dscr', 0) >= 1.05 and metrics.get('pd', 1) <= 0.1"
+        decision: "conditional"
+        conditions:
+          - "Obtain personal guaranty from all 20%+ owners."
+      - decision: "decline"
+        conditions:
+          - "Provide mitigation plan or exception memo for DSCR/PD variance."

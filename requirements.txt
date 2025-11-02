@@ -1,0 +1,15 @@
+pypdf
+beautifulsoup4
+sentence-transformers
+faiss-cpu
+numpy
+lxml
+streamlit
+rank_bm25
+rapidfuzz
+transformers
+torch
+fastapi
+uvicorn
+pandas
+pyyaml

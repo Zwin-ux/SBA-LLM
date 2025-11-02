@@ -1,0 +1,27 @@
+{
+  "intercept": -2.5,
+  "coefficients": {
+    "log_rev_ttm": -0.35,
+    "dscr": -1.4,
+    "dti": 0.9,
+    "fico_proxy": -0.015,
+    "years_in_business": -0.08,
+    "delinquencies": 1.2,
+    "collateral_coverage": -0.6
+  },
+  "lgd": {
+    "base": 0.45,
+    "collateral_coverage_adjustment": -0.25
+  },
+  "sector_adjustments": {
+    "722513": 0.25,
+    "541611": -0.1,
+    "default": 0.0
+  },
+  "risk_bands": [
+    {"max_pd": 0.05, "band": "A"},
+    {"max_pd": 0.10, "band": "B"},
+    {"max_pd": 0.18, "band": "C"},
+    {"max_pd": 1.0, "band": "D"}
+  ]
+}
