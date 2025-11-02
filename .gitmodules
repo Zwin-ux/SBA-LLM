@@ -1,0 +1,3 @@
+[submodule "AmPAC"]
+	path = AmPAC
+	url = https://huggingface.co/spaces/BonelliLab/AmPAC
