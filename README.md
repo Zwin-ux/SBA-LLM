@@ -1,3 +1,12 @@
+---
+title: SBA-LLM
+sdk: gradio
+app_file: app.py
+license: apache-2.0
+emoji:
+pinned: true
+---
+
 # SBA Copilot & Underwriter Assistant
 
 ## Executive Summary

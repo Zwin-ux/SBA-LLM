@@ -5,8 +5,10 @@ from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 import faiss, json, numpy as np, re, pathlib, os, datetime as dt
 from typing import Dict, List
+from pathlib import Path
 
-DATA_DIR = pathlib.Path("rag/data")
+
+DATA_DIR = Path(__file__).resolve().parent / "data"
 IDX_PATH = "rag/index.faiss"
 META_PATH = "rag/meta.jsonl"
 MANIFEST = {m["file"]: m for m in (
